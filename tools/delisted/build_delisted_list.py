@@ -14,7 +14,8 @@ What it keeps (Kai's checks, step a):
     give one; each user's app confirms against Alpaca's stock list (name + dates) and sets the end date from
     Alpaca's last candle (decisions 1-2, 24 Nov). This list never contains Alpaca data.
 
-Runs on GitHub once a week (the website project's job). The first run backfills 2016 onward; it stops itself
+Runs on GitHub once a week in the public project cindervex47/cindervex_data (free minutes; moved there 24 Nov
+after the private website project ran out of minutes); a copy of this script lives there. The first run backfills 2016 onward; it stops itself
 before GitHub's time limit, saves its progress, and the next run picks up where it stopped.
 Standard library only.
 """
