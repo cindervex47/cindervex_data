@@ -1,0 +1,53 @@
+# CinderVex delisted-stock list (D-160 step a, lab126, Kai OK 24 Nov 2026).
+# Once a week, read the US regulator's new delisting filings and update data/delisted-stocks.json here (public: free GitHub minutes).
+# The first run backfills 2016 onward; a run that runs out of time saves its progress and starts the next run itself.
+# Regulator information only: no prices, no keys.
+name: Delisted stocks list
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'        # Monday 03:17 UTC = Sunday night US Eastern
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/delisted-stocks.yml', 'tools/delisted/build_delisted_list.py']
+
+concurrency:
+  group: delisted-stocks
+  cancel-in-progress: false
+
+permissions:
+  contents: write               # commit the list
+  actions: write                # start the next run while the first backfill is unfinished
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build the list (5 requests a second, contact support@getcindervex.com)
+        id: build
+        run: python tools/delisted/build_delisted_list.py --state tools/delisted/state.json.gz --out data/delisted-stocks.json --max-minutes 320
+      - name: Save the list and progress
+        if: always()
+        run: |
+          git config user.name "CinderVex list job"
+          git config user.email "support@getcindervex.com"
+          git add data/delisted-stocks.json tools/delisted/state.json.gz || true
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          if [ "${{ steps.build.outputs.complete }}" = "true" ]; then
+            git commit -m "Delisted-stock list: weekly update"
+          else
+            git commit -m "Delisted-stock list: progress saved"
+          fi
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Keep going until the first backfill is finished
+        if: steps.build.outputs.complete == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run delisted-stocks.yml --ref main
